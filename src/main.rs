@@ -1,12 +1,13 @@
 use std::{env, process};
 
 fn main() {
-    if env::args().nth(1).as_deref() != Some("--check") {
-        if env::args().nth(1).is_some() {
+    match galera_check::command_mode(env::args().nth(1).as_deref()) {
+        Ok(false) => return,
+        Err(()) => {
             eprintln!("usage: galera-check [--check]");
             process::exit(2);
         }
-        return;
+        Ok(true) => {}
     }
 
     let url = env::var("GALERA_URL").unwrap_or_else(|_| usage("GALERA_URL is required"));
