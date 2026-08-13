@@ -23,6 +23,8 @@ standalone operational diagnostic.
 - No arguments must remain a successful no-op.
 - `--check` reads `GALERA_URL` and requires `wsrep_local_state_comment=Synced`
   and `wsrep_ready=ON`.
+- Database checks use bounded connection, read, and write timeouts; URL-supplied
+  timeout values are preserved.
 - Do not compile credentials into the binary or commit credentials to Git.
 - Preserve useful exit codes: `0` healthy/no-op, `1` health or connection
   failure, `2` invalid invocation or configuration.
@@ -38,11 +40,13 @@ cargo test --all-targets --all-features
 cargo clippy --all-targets --all-features -- -D warnings
 cargo llvm-cov --all-targets --all-features \
   --ignore-filename-regex 'src/(main|mysql_adapter).rs' \
+  --fail-under-regions 100 --fail-under-functions 100 --fail-under-lines 100 \
   --summary-only
 ```
 
-Live checks require an explicitly supplied `GALERA_URL`; never put that URL in
-source, logs, fixtures, or documentation with real credentials.
+Live checks are opt-in with `GALERA_CHECK_LIVE=1` and require an explicitly
+supplied `GALERA_URL`; never put that URL in source, logs, fixtures, or
+documentation with real credentials.
 
 ## Changes and releases
 
