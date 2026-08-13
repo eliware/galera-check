@@ -18,7 +18,9 @@ pub fn check_url(url: &str) -> Result<String, String> {
         .get_conn()
         .map_err(|error| format!("connection failed: {error}"))?;
     let rows: Vec<(String, String)> = connection
-        .query("SHOW GLOBAL STATUS WHERE Variable_name IN ('wsrep_local_state_comment','wsrep_ready')")
+        .query(
+            "SHOW GLOBAL STATUS WHERE Variable_name IN ('wsrep_local_state_comment','wsrep_ready')",
+        )
         .map_err(|error| format!("status query failed: {error}"))?;
     let status = status_from_rows(&rows);
     validate_status(&status)?;
@@ -41,7 +43,9 @@ fn status_from_rows(rows: &[(String, String)]) -> (String, String) {
 
 fn validate_status((state, ready): &(String, String)) -> Result<(), String> {
     if state != "Synced" || ready != "ON" {
-        return Err(format!("unhealthy Galera state: state={state} ready={ready}"));
+        return Err(format!(
+            "unhealthy Galera state: state={state} ready={ready}"
+        ));
     }
     Ok(())
 }
@@ -65,8 +69,8 @@ mod tests {
 
     #[test]
     fn reports_connection_failures() {
-        let error = check_url("mysql://user:password@127.0.0.1:1")
-            .expect_err("closed port should fail");
+        let error =
+            check_url("mysql://user:password@127.0.0.1:1").expect_err("closed port should fail");
         assert!(error.contains("failed:"));
     }
 
@@ -76,7 +80,10 @@ mod tests {
             ("wsrep_ready".to_string(), "ON".to_string()),
             ("wsrep_local_state_comment".to_string(), "Synced".to_string()),
         ];
-        assert_eq!(status_from_rows(&rows), ("Synced".to_string(), "ON".to_string()));
+        assert_eq!(
+            status_from_rows(&rows),
+            ("Synced".to_string(), "ON".to_string())
+        );
     }
 
     #[test]
