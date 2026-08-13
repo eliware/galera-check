@@ -1,11 +1,14 @@
 use mysql::{prelude::Queryable, Opts, Pool};
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct CommandModeError;
+
 /// Returns whether the CLI should perform a check for its first argument.
-pub fn command_mode(argument: Option<&str>) -> Result<bool, ()> {
+pub fn command_mode(argument: Option<&str>) -> Result<bool, CommandModeError> {
     match argument {
         None => Ok(false),
         Some("--check") => Ok(true),
-        Some(_) => Err(()),
+        Some(_) => Err(CommandModeError),
     }
 }
 
@@ -52,13 +55,13 @@ fn validate_status((state, ready): &(String, String)) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{check_url, command_mode, status_from_rows, validate_status};
+    use super::{check_url, command_mode, status_from_rows, validate_status, CommandModeError};
 
     #[test]
     fn parses_cli_modes() {
         assert_eq!(command_mode(None), Ok(false));
         assert_eq!(command_mode(Some("--check")), Ok(true));
-        assert_eq!(command_mode(Some("--invalid")), Err(()));
+        assert_eq!(command_mode(Some("--invalid")), Err(CommandModeError));
     }
 
     #[test]

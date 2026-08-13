@@ -3,7 +3,7 @@ use std::{env, process};
 fn main() {
     match galera_check::command_mode(env::args().nth(1).as_deref()) {
         Ok(false) => return,
-        Err(()) => {
+        Err(_) => {
             eprintln!("usage: galera-check [--check]");
             process::exit(2);
         }
