@@ -16,6 +16,18 @@ pub fn check(opts: Opts) -> Result<(), String> {
     validate_status(&rows)
 }
 
+pub fn weight(opts: Opts) -> Result<String, String> {
+    let started = std::time::Instant::now();
+    let pool = Pool::new(with_default_timeouts(opts))
+        .map_err(|error| format!("connection setup failed: {error}"))?;
+    let mut connection = pool.get_conn().map_err(connection_error)?;
+    let rows: Vec<(String, String)> = connection.query(
+        "SHOW GLOBAL STATUS WHERE Variable_name IN ('wsrep_local_state_comment','wsrep_ready','wsrep_local_recv_queue','wsrep_local_send_queue','wsrep_flow_control_paused')",
+    ).map_err(status_query_error)?;
+    let latency_ms = started.elapsed().as_millis() as u64;
+    Ok(format!("{}%", crate::weight::calculate(&rows, latency_ms)))
+}
+
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(5);
 
 fn with_default_timeouts(opts: Opts) -> Opts {

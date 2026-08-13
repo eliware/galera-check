@@ -12,6 +12,14 @@ pub(crate) fn check_url(
     Ok(host)
 }
 
+pub(crate) fn check_url_weight(
+    url: &str,
+    checker: fn(Opts) -> Result<String, String>,
+) -> Result<String, String> {
+    let opts = Opts::from_url(url).map_err(|error| format!("invalid GALERA_URL: {error}"))?;
+    checker(opts)
+}
+
 pub(crate) fn validate_status(rows: &[(String, String)]) -> Result<(), String> {
     validate(&crate::status::from_rows(rows)?)
 }
@@ -29,6 +37,10 @@ mod tests {
         Err("transport failed".into())
     }
 
+    fn weighted(_: Opts) -> Result<String, String> {
+        Ok("75%".into())
+    }
+
     #[test]
     fn parses_url_before_transport() {
         assert_eq!(
@@ -43,6 +55,21 @@ mod tests {
             check_url("mysql://user:password@example.test:3306", failed),
             Err("transport failed".into())
         );
+    }
+
+    #[test]
+    fn parses_url_for_weighted_checks() {
+        assert_eq!(
+            super::check_url_weight("mysql://user:password@example.test:3306", weighted),
+            Ok("75%".into())
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_weighted_urls() {
+        assert!(super::check_url_weight("not-a-mysql-url", weighted)
+            .unwrap_err()
+            .starts_with("invalid GALERA_URL:"));
     }
 
     #[test]

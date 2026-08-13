@@ -11,8 +11,10 @@ cron, systemd, or Kubernetes operational tooling.
 - Successful no-op when invoked without arguments.
 - `--check` verifies `wsrep_local_state_comment=Synced` and
   `wsrep_ready=ON`.
-- `--agent` serves HAProxy agent checks, returning `up` or `down` for the
-  configured Galera node.
+- `--agent` serves standard HAProxy agent checks, returning `up` or `down` for
+  the configured Galera node.
+- `--agent --performance` serves weighted HAProxy agent checks using database
+  and Galera performance metrics.
 - Runtime URL or individual connection variables; secrets are never compiled into the binary.
 - Rustls TLS support for encrypted database connections.
 - Useful exit codes for HAProxy and automation.
@@ -62,6 +64,17 @@ GALERA_AGENT_LISTEN='127.0.0.1:33060' ./galera-check --agent
 The agent returns `up` when the node is `Synced` and `wsrep_ready=ON`, and
 `down` for connection failures or unhealthy state. The listen address defaults
 to `127.0.0.1:33060`.
+
+Use performance mode only for a weighted read backend:
+
+```sh
+GALERA_URL='mysql://user:password@10.0.0.81:3306' \
+GALERA_AGENT_LISTEN='127.0.0.1:33160' ./galera-check --agent --performance
+```
+
+Standard `--agent` mode remains health-only for ordered write/sequential-read
+backends. Performance mode returns a dynamic weight percentage based on
+Galera queues, flow control, and probe latency.
 
 TLS can be requested with MySQL URL options such as
 `?ssl-mode=REQUIRED`; the bundled Rustls backend validates the server

@@ -3,12 +3,18 @@ mod checker;
 mod cli;
 mod mysql_adapter;
 mod status;
+mod weight;
 
 pub use cli::{CommandMode, CommandModeError};
 
 /// Runs the HAProxy agent listener until the process is stopped.
 pub fn run_agent(galera_url: &str, listen: &str) -> Result<(), String> {
-    agent::serve(galera_url, listen, check_url)
+    agent::serve(galera_url, listen, check_health_agent)
+}
+
+/// Runs the performance-aware HAProxy agent listener until stopped.
+pub fn run_performance_agent(galera_url: &str, listen: &str) -> Result<(), String> {
+    agent::serve(galera_url, listen, check_weight_url)
 }
 
 /// Runs the checker logic without terminating the process.
@@ -24,6 +30,21 @@ pub fn command_mode(arguments: &[String]) -> Result<CommandMode, CommandModeErro
 /// Connects to a MariaDB Galera node and verifies it is ready for traffic.
 pub fn check_url(url: &str) -> Result<String, String> {
     checker::check_url(url, mysql_adapter::check)
+}
+
+fn check_weight_url(url: &str) -> Result<String, String> {
+    checker::check_url_weight(url, mysql_adapter::weight)
+}
+
+fn check_health_agent(url: &str) -> Result<String, String> {
+    health_agent_response(url, check_url)
+}
+
+fn health_agent_response(
+    url: &str,
+    checker: fn(&str) -> Result<String, String>,
+) -> Result<String, String> {
+    checker(url).map(|_| "up".into())
 }
 
 #[cfg(test)]
@@ -63,5 +84,37 @@ mod tests {
         let error = run_agent("mysql://user:password@host", "bad address")
             .expect_err("invalid listen address should fail");
         assert!(error.starts_with("agent bind failed on bad address:"));
+    }
+
+    #[test]
+    fn reports_performance_agent_bind_failures() {
+        let error = super::run_performance_agent("mysql://user:password@host", "bad address")
+            .expect_err("invalid listen address should fail");
+        assert!(error.starts_with("agent bind failed on bad address:"));
+    }
+
+    #[test]
+    fn rejects_invalid_performance_urls_without_connecting() {
+        let error =
+            super::check_weight_url("not-a-mysql-url").expect_err("invalid URL should fail");
+        assert!(error.starts_with("invalid GALERA_URL:"));
+    }
+
+    #[test]
+    fn rejects_invalid_standard_agent_urls_without_connecting() {
+        let error =
+            super::check_health_agent("not-a-mysql-url").expect_err("invalid URL should fail");
+        assert!(error.starts_with("invalid GALERA_URL:"));
+    }
+
+    #[test]
+    fn formats_healthy_standard_agent_response() {
+        fn healthy(_: &str) -> Result<String, String> {
+            Ok("node".into())
+        }
+        assert_eq!(
+            super::health_agent_response("url", healthy),
+            Ok("up".into())
+        );
     }
 }

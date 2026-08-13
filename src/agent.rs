@@ -20,6 +20,9 @@ pub fn serve(
 }
 
 fn respond(stream: &mut TcpStream, result: Result<String, String>) {
-    let response = if result.is_ok() { "up\n" } else { "down\n" };
+    let response = match result {
+        Ok(response) => format!("{response}\n"),
+        Err(_) => "down\n".into(),
+    };
     let _ = stream.write_all(response.as_bytes());
 }

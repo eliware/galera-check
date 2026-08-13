@@ -3,12 +3,19 @@ use std::{env, process};
 fn main() {
     let arguments: Vec<String> = env::args().skip(1).collect();
     let galera_url = connection_url();
-    if arguments.len() == 1 && arguments[0] == "--agent" {
+    if (arguments.len() == 1 && arguments[0] == "--agent")
+        || (arguments.len() == 2 && arguments[0] == "--agent" && arguments[1] == "--performance")
+    {
         let url = galera_url.unwrap_or_else(|| {
             usage("GALERA_URL or GALERA_USER/GALERA_PASSWORD/GALERA_HOST is required for --agent")
         });
         let listen = env::var("GALERA_AGENT_LISTEN").unwrap_or_else(|_| default_agent_listen(&url));
-        if let Err(message) = galera_check::run_agent(&url, &listen) {
+        let result = if arguments.len() == 2 {
+            galera_check::run_performance_agent(&url, &listen)
+        } else {
+            galera_check::run_agent(&url, &listen)
+        };
+        if let Err(message) = result {
             eprintln!("{message}");
             process::exit(1);
         }
@@ -25,7 +32,7 @@ fn main() {
 }
 
 fn usage(message: &str) -> ! {
-    eprintln!("{message}; usage: GALERA_URL=mysql://user:password@host:3306 galera-check --agent");
+    eprintln!("{message}; usage: GALERA_URL=mysql://user:password@host:3306 galera-check --agent [--performance]");
     process::exit(2);
 }
 
