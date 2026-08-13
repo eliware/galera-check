@@ -15,6 +15,20 @@ cron, systemd, or Kubernetes operational tooling.
 - Useful exit codes for HAProxy and automation.
 - Small release binary with no runtime dependency on Rust.
 
+## Project structure
+
+The implementation is split into focused modules:
+
+- `src/cli.rs` handles argument parsing and maps failures to exit codes.
+- `src/checker.rs` parses the database URL and coordinates a check.
+- `src/status.rs` parses Galera status rows and applies readiness rules.
+- `src/mysql_adapter.rs` contains the MySQL connection and query code.
+- `src/lib.rs` exposes the library API; `src/main.rs` handles the process
+  boundary.
+
+Status parsing and readiness validation are tested independently from the
+database transport. Process-level behavior is covered in `tests/cli.rs`.
+
 ## Usage
 
 The checker intentionally does nothing without arguments:
@@ -64,18 +78,18 @@ cargo fmt --all -- --check
 cargo check --all-targets --all-features
 cargo test --all-targets --all-features
 cargo clippy --all-targets --all-features -- -D warnings
-cargo llvm-cov --all-targets --all-features --ignore-filename-regex 'src/(main|mysql_adapter).rs' --summary-only
+cargo llvm-cov --all-targets --all-features --summary-only
 ```
 
 GitHub Actions runs formatting, checking, tests, Clippy, and coverage on
 pushes and pull requests.
 
-The coverage gate excludes only the process-exit wrapper and MySQL transport
-adapter; all testable CLI and library logic is included. The current gate is
-100% for regions, functions, and lines.
-To exercise the healthy live-check integration test locally, provide an
-explicit `GALERA_URL` with credentials through the environment. Never commit
-or log that URL.
+The coverage gate excludes only the process wrapper and live MySQL adapter;
+the remaining CLI and library logic is covered at 100% for regions, functions,
+and lines. Transport-independent behavior is tested with local fakes. To
+exercise the healthy live-check integration test locally, provide an explicit
+`GALERA_URL` with credentials through the environment. Never commit or log that
+URL.
 
 ## Support
 

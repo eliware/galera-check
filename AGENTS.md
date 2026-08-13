@@ -8,8 +8,13 @@ standalone operational diagnostic.
 
 ## Layout
 
-- `src/lib.rs` — connection and Galera-state checking logic plus unit tests
-- `src/main.rs` — command-line behavior
+- `src/lib.rs` — small public library API and module wiring
+- `src/main.rs` — process environment, output, and exit handling
+- `src/cli.rs` — argument parsing and CLI result/exit-code mapping
+- `src/checker.rs` — URL parsing and checker orchestration
+- `src/status.rs` — Galera status extraction and readiness validation
+- `src/mysql_adapter.rs` — MySQL connection and status query implementation
+- `tests/cli.rs` — process-level CLI behavior tests
 - `Cargo.toml` / `Cargo.lock` — dependency and package metadata
 - `.github/workflows/ci.yml` — formatting, checking, tests, Clippy, and coverage
 
@@ -40,6 +45,9 @@ source, logs, fixtures, or documentation with real credentials.
 ## Changes and releases
 
 - Keep the checker small and dependency changes justified.
+- Keep database-specific behavior in `mysql_adapter.rs`; keep readiness rules
+  and status parsing independent of the MySQL transport so they remain easy to
+  test.
 - Update tests and README behavior documentation when CLI behavior changes.
 - Do not deploy binaries to routers or change HAProxy/VyOS configuration from
   this repository unless the user explicitly requests it.
