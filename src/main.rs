@@ -1,7 +1,8 @@
 use std::{env, process};
 
 fn main() {
-    match galera_check::command_mode(env::args().nth(1).as_deref()) {
+    let arguments: Vec<String> = env::args().skip(1).collect();
+    match galera_check::command_mode(&arguments) {
         Ok(false) => return,
         Err(_) => {
             eprintln!("usage: galera-check [--check]");

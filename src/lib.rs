@@ -1,14 +1,16 @@
-use mysql::{prelude::Queryable, Opts, Pool};
+use mysql::Opts;
+
+mod mysql_adapter;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct CommandModeError;
 
-/// Returns whether the CLI should perform a check for its first argument.
-pub fn command_mode(argument: Option<&str>) -> Result<bool, CommandModeError> {
-    match argument {
-        None => Ok(false),
-        Some("--check") => Ok(true),
-        Some(_) => Err(CommandModeError),
+/// Returns whether the CLI should perform a check for its arguments.
+pub fn command_mode(arguments: &[String]) -> Result<bool, CommandModeError> {
+    match arguments {
+        [] => Ok(false),
+        [argument] if argument == "--check" => Ok(true),
+        _ => Err(CommandModeError),
     }
 }
 
@@ -16,21 +18,11 @@ pub fn command_mode(argument: Option<&str>) -> Result<bool, CommandModeError> {
 pub fn check_url(url: &str) -> Result<String, String> {
     let opts = Opts::from_url(url).map_err(|error| format!("invalid GALERA_URL: {error}"))?;
     let host = opts.get_ip_or_hostname().to_string();
-    let pool = Pool::new(opts).map_err(|error| format!("connection setup failed: {error}"))?;
-    let mut connection = pool
-        .get_conn()
-        .map_err(|error| format!("connection failed: {error}"))?;
-    let rows: Vec<(String, String)> = connection
-        .query(
-            "SHOW GLOBAL STATUS WHERE Variable_name IN ('wsrep_local_state_comment','wsrep_ready')",
-        )
-        .map_err(|error| format!("status query failed: {error}"))?;
-    let status = status_from_rows(&rows);
-    validate_status(&status)?;
+    mysql_adapter::check(opts)?;
     Ok(host)
 }
 
-fn status_from_rows(rows: &[(String, String)]) -> (String, String) {
+pub(crate) fn status_from_rows(rows: &[(String, String)]) -> (String, String) {
     let state = rows
         .iter()
         .find(|(name, _)| name == "wsrep_local_state_comment")
@@ -59,9 +51,16 @@ mod tests {
 
     #[test]
     fn parses_cli_modes() {
-        assert_eq!(command_mode(None), Ok(false));
-        assert_eq!(command_mode(Some("--check")), Ok(true));
-        assert_eq!(command_mode(Some("--invalid")), Err(CommandModeError));
+        assert_eq!(command_mode(&[]), Ok(false));
+        assert_eq!(command_mode(&["--check".to_string()]), Ok(true));
+        assert_eq!(
+            command_mode(&["--invalid".to_string()]),
+            Err(CommandModeError)
+        );
+        assert_eq!(
+            command_mode(&["--check".to_string(), "unexpected".to_string()]),
+            Err(CommandModeError)
+        );
     }
 
     #[test]

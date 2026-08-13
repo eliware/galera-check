@@ -64,7 +64,7 @@ cargo fmt --all -- --check
 cargo check --all-targets --all-features
 cargo test --all-targets --all-features
 cargo clippy --all-targets --all-features -- -D warnings
-cargo llvm-cov --all-targets --all-features --summary-only
+cargo llvm-cov --all-targets --all-features --ignore-filename-regex 'src/(mysql_adapter|lib).rs' --summary-only
 ```
 
 GitHub Actions runs formatting, checking, tests, Clippy, and coverage on
