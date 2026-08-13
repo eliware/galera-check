@@ -78,7 +78,10 @@ mod tests {
     fn extracts_required_status_values() {
         let rows = vec![
             ("wsrep_ready".to_string(), "ON".to_string()),
-            ("wsrep_local_state_comment".to_string(), "Synced".to_string()),
+            (
+                "wsrep_local_state_comment".to_string(),
+                "Synced".to_string(),
+            ),
         ];
         assert_eq!(
             status_from_rows(&rows),
