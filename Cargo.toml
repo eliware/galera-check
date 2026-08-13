@@ -2,6 +2,13 @@
 name = "galera-check"
 version = "0.1.0"
 edition = "2021"
+description = "Minimal Galera readiness checker for MariaDB nodes"
+license = "MIT"
+repository = "https://github.com/eliware/galera-check"
+readme = "README.md"
+keywords = ["mariadb", "mysql", "galera", "health-check"]
+categories = ["command-line-utilities", "database"]
+rust-version = "1.82"
 
 [dependencies]
 mysql = { version = "26", default-features = false, features = ["minimal-rust"] }
