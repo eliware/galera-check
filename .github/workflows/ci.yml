@@ -27,4 +27,4 @@ jobs:
       - run: cargo test --all-targets --all-features
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - uses: taiki-e/install-action@cargo-llvm-cov
-      - run: cargo llvm-cov --all-targets --all-features --ignore-filename-regex 'src/(main|mysql_adapter).rs' --summary-only
+      - run: cargo llvm-cov --all-targets --all-features --ignore-filename-regex 'src/(main|mysql_adapter).rs' --fail-under-regions 100 --fail-under-functions 100 --fail-under-lines 100 --summary-only

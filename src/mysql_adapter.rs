@@ -1,11 +1,12 @@
-use std::fmt::Display;
+use std::{fmt::Display, time::Duration};
 
-use mysql::{prelude::Queryable, Opts, Pool};
+use mysql::{prelude::Queryable, Opts, OptsBuilder, Pool};
 
 use crate::checker::validate_status;
 
 pub fn check(opts: Opts) -> Result<(), String> {
-    let pool = Pool::new(opts).map_err(|error| format!("connection setup failed: {error}"))?;
+    let pool = Pool::new(with_default_timeouts(opts))
+        .map_err(|error| format!("connection setup failed: {error}"))?;
     let mut connection = pool.get_conn().map_err(connection_error)?;
     let rows: Vec<(String, String)> = connection
         .query(
@@ -15,10 +16,53 @@ pub fn check(opts: Opts) -> Result<(), String> {
     validate_status(&rows)
 }
 
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(5);
+
+fn with_default_timeouts(opts: Opts) -> Opts {
+    OptsBuilder::from_opts(opts.clone())
+        .tcp_connect_timeout(opts.get_tcp_connect_timeout().or(Some(DEFAULT_TIMEOUT)))
+        .read_timeout(opts.get_read_timeout().copied().or(Some(DEFAULT_TIMEOUT)))
+        .write_timeout(opts.get_write_timeout().copied().or(Some(DEFAULT_TIMEOUT)))
+        .into()
+}
+
 fn connection_error<E: Display>(error: E) -> String {
     format!("connection failed: {error}")
 }
 
 fn status_query_error<E: Display>(error: E) -> String {
     format!("status query failed: {error}")
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use mysql::{Opts, OptsBuilder};
+
+    use super::{with_default_timeouts, DEFAULT_TIMEOUT};
+
+    #[test]
+    fn adds_defaults_and_preserves_explicit_timeouts() {
+        let defaults = with_default_timeouts(Opts::from_url("mysql://u:p@host").unwrap());
+        assert_eq!(defaults.get_tcp_connect_timeout(), Some(DEFAULT_TIMEOUT));
+        assert_eq!(defaults.get_read_timeout(), Some(&DEFAULT_TIMEOUT));
+        assert_eq!(defaults.get_write_timeout(), Some(&DEFAULT_TIMEOUT));
+
+        let configured: Opts = OptsBuilder::from_opts(Opts::from_url("mysql://u:p@host").unwrap())
+            .tcp_connect_timeout(Some(Duration::from_secs(1)))
+            .read_timeout(Some(Duration::from_secs(2)))
+            .write_timeout(Some(Duration::from_secs(3)))
+            .into();
+        let configured = with_default_timeouts(configured);
+        assert_eq!(
+            configured.get_tcp_connect_timeout(),
+            Some(Duration::from_secs(1))
+        );
+        assert_eq!(configured.get_read_timeout(), Some(&Duration::from_secs(2)));
+        assert_eq!(
+            configured.get_write_timeout(),
+            Some(&Duration::from_secs(3))
+        );
+    }
 }

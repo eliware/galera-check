@@ -89,11 +89,11 @@ pushes and pull requests.
 
 The coverage gate excludes only the process wrapper (`src/main.rs`) and live
 MySQL adapter (`src/mysql_adapter.rs`). The remaining CLI and library logic is
-covered at 100% for regions, functions, and lines (100% x 3). Run the command
-above to reproduce the CI coverage gate. Transport-independent behavior is
-tested with local fakes. To exercise the healthy live-check integration test
-locally, provide an explicit `GALERA_URL` with credentials through the
-environment. Never commit or log that URL.
+required to remain at 100% for regions, functions, and lines (100% x 3). Run
+the command above to reproduce the CI coverage gate. Transport-independent
+behavior is tested with local fakes. The live-check integration test is opt-in:
+set `GALERA_CHECK_LIVE=1` and provide an explicit `GALERA_URL`. Never commit or
+log that URL.
 
 ## Support
 

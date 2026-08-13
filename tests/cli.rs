@@ -47,6 +47,9 @@ fn invalid_url_exits_two() {
 
 #[test]
 fn healthy_url_succeeds_when_supplied() {
+    if std::env::var("GALERA_CHECK_LIVE").ok().as_deref() != Some("1") {
+        return;
+    }
     let Ok(url) = std::env::var("GALERA_URL") else {
         return;
     };
