@@ -35,13 +35,13 @@ fn missing_url_exits_two() {
 }
 
 #[test]
-fn invalid_url_exits_one() {
+fn invalid_url_exits_two() {
     let output = binary()
         .arg("--check")
         .env("GALERA_URL", "not-a-mysql-url")
         .output()
         .expect("run checker");
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&output.stderr).contains("invalid GALERA_URL:"));
 }
 

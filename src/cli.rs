@@ -21,7 +21,14 @@ pub(crate) fn run(
             let url = galera_url.ok_or_else(|| (2, "GALERA_URL is required; usage: GALERA_URL=mysql://user:password@host:3306 galera-check --check".into()))?;
             checker(url)
                 .map(|host| Some(format!("{host}: Synced, wsrep_ready=ON")))
-                .map_err(|message| (1, message))
+                .map_err(|message| {
+                    let code = if message.starts_with("invalid GALERA_URL:") {
+                        2
+                    } else {
+                        1
+                    };
+                    (code, message)
+                })
         }
     }
 }
@@ -36,6 +43,10 @@ mod tests {
 
     fn failed(_: &str) -> Result<String, String> {
         Err("unhealthy".into())
+    }
+
+    fn invalid_url(_: &str) -> Result<String, String> {
+        Err("invalid GALERA_URL: invalid URL".into())
     }
 
     #[test]
@@ -66,6 +77,14 @@ mod tests {
         assert_eq!(
             run(&["--check".into()], Some("url"), failed),
             Err((1, "unhealthy".into()))
+        );
+    }
+
+    #[test]
+    fn maps_invalid_url_to_exit_two() {
+        assert_eq!(
+            run(&["--check".into()], Some("url"), invalid_url),
+            Err((2, "invalid GALERA_URL: invalid URL".into()))
         );
     }
 }

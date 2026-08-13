@@ -36,7 +36,9 @@ cargo fmt --all -- --check
 cargo check --all-targets --all-features
 cargo test --all-targets --all-features
 cargo clippy --all-targets --all-features -- -D warnings
-cargo llvm-cov --all-targets --all-features --summary-only
+cargo llvm-cov --all-targets --all-features \
+  --ignore-filename-regex 'src/(main|mysql_adapter).rs' \
+  --summary-only
 ```
 
 Live checks require an explicitly supplied `GALERA_URL`; never put that URL in

@@ -51,7 +51,8 @@ Exit behavior:
 - No arguments: `0`, without connecting.
 - Healthy `--check`: `0`.
 - Connection failure or unhealthy Galera state: `1`.
-- Invalid arguments or missing `GALERA_URL`: `2`.
+- Invalid arguments or configuration, including a missing or malformed
+  `GALERA_URL`: `2`.
 
 ## HAProxy
 
@@ -78,18 +79,21 @@ cargo fmt --all -- --check
 cargo check --all-targets --all-features
 cargo test --all-targets --all-features
 cargo clippy --all-targets --all-features -- -D warnings
-cargo llvm-cov --all-targets --all-features --summary-only
+cargo llvm-cov --all-targets --all-features \
+  --ignore-filename-regex 'src/(main|mysql_adapter).rs' \
+  --summary-only
 ```
 
 GitHub Actions runs formatting, checking, tests, Clippy, and coverage on
 pushes and pull requests.
 
-The coverage gate excludes only the process wrapper and live MySQL adapter;
-the remaining CLI and library logic is covered at 100% for regions, functions,
-and lines. Transport-independent behavior is tested with local fakes. To
-exercise the healthy live-check integration test locally, provide an explicit
-`GALERA_URL` with credentials through the environment. Never commit or log that
-URL.
+The coverage gate excludes only the process wrapper (`src/main.rs`) and live
+MySQL adapter (`src/mysql_adapter.rs`). The remaining CLI and library logic is
+covered at 100% for regions, functions, and lines (100% x 3). Run the command
+above to reproduce the CI coverage gate. Transport-independent behavior is
+tested with local fakes. To exercise the healthy live-check integration test
+locally, provide an explicit `GALERA_URL` with credentials through the
+environment. Never commit or log that URL.
 
 ## Support
 
