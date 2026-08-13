@@ -13,7 +13,7 @@ pub(crate) fn check_url(
 }
 
 pub(crate) fn validate_status(rows: &[(String, String)]) -> Result<(), String> {
-    validate(&crate::status::from_rows(rows))
+    validate(&crate::status::from_rows(rows)?)
 }
 
 #[cfg(test)]
@@ -60,6 +60,19 @@ mod tests {
         assert_eq!(
             validate_status(&unhealthy),
             Err("unhealthy Galera state: state=Joining ready=ON".into())
+        );
+    }
+
+    #[test]
+    fn rejects_duplicate_status_rows() {
+        let rows = vec![
+            ("wsrep_local_state_comment".into(), "Synced".into()),
+            ("wsrep_local_state_comment".into(), "Joining".into()),
+            ("wsrep_ready".into(), "ON".into()),
+        ];
+        assert_eq!(
+            validate_status(&rows),
+            Err("duplicate Galera status row: wsrep_local_state_comment".into())
         );
     }
 }

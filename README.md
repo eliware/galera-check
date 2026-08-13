@@ -12,6 +12,7 @@ cron, systemd, or Kubernetes operational tooling.
 - `--check` verifies `wsrep_local_state_comment=Synced` and
   `wsrep_ready=ON`.
 - Runtime URL and credentials; secrets are never compiled into the binary.
+- Rustls TLS support for encrypted database connections.
 - Useful exit codes for HAProxy and automation.
 - Small release binary with no runtime dependency on Rust.
 
@@ -42,6 +43,10 @@ Run a Galera readiness check by supplying the connection URL at runtime:
 ```sh
 GALERA_URL='mysql://user:password@10.0.0.81:3306' ./galera-check --check
 ```
+
+TLS can be requested with MySQL URL options such as
+`?ssl-mode=REQUIRED`; the bundled Rustls backend validates the server
+certificate using the platform root store.
 
 Keep credentials in the service environment or a protected secret file. Never
 commit real credentials to the repository.

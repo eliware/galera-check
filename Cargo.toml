@@ -11,4 +11,4 @@ categories = ["command-line-utilities", "database"]
 rust-version = "1.82"
 
 [dependencies]
-mysql = { version = "26", default-features = false, features = ["minimal-rust"] }
+mysql = { version = "26", default-features = false, features = ["minimal-rust", "rustls-tls-ring"] }

@@ -4,18 +4,23 @@ pub(crate) struct GaleraStatus {
     pub(crate) ready: String,
 }
 
-pub(crate) fn from_rows(rows: &[(String, String)]) -> GaleraStatus {
-    let value = |name: &str| {
-        rows.iter()
-            .find(|(row_name, _)| row_name == name)
+pub(crate) fn from_rows(rows: &[(String, String)]) -> Result<GaleraStatus, String> {
+    let value = |name: &str| -> Result<String, String> {
+        let mut values = rows.iter().filter(|(row_name, _)| row_name == name);
+        let value = values
+            .next()
             .map(|(_, value)| value.clone())
-            .unwrap_or_default()
+            .unwrap_or_default();
+        if values.next().is_some() {
+            return Err(format!("duplicate Galera status row: {name}"));
+        }
+        Ok(value)
     };
 
-    GaleraStatus {
-        state: value("wsrep_local_state_comment"),
-        ready: value("wsrep_ready"),
-    }
+    Ok(GaleraStatus {
+        state: value("wsrep_local_state_comment")?,
+        ready: value("wsrep_ready")?,
+    })
 }
 
 pub(crate) fn validate(status: &GaleraStatus) -> Result<(), String> {
@@ -40,10 +45,41 @@ mod tests {
         ];
         assert_eq!(
             from_rows(&rows),
-            GaleraStatus {
+            Ok(GaleraStatus {
                 state: "Synced".into(),
                 ready: "ON".into()
-            }
+            })
+        );
+    }
+
+    #[test]
+    fn missing_status_values_are_unhealthy() {
+        assert_eq!(
+            from_rows(&[]),
+            Ok(GaleraStatus {
+                state: "".into(),
+                ready: "".into()
+            })
+        );
+        assert_eq!(
+            from_rows(&[("wsrep_local_state_comment".into(), "Synced".into())]),
+            Ok(GaleraStatus {
+                state: "Synced".into(),
+                ready: "".into()
+            })
+        );
+    }
+
+    #[test]
+    fn rejects_duplicate_ready_rows() {
+        let rows = vec![
+            ("wsrep_local_state_comment".into(), "Synced".into()),
+            ("wsrep_ready".into(), "ON".into()),
+            ("wsrep_ready".into(), "OFF".into()),
+        ];
+        assert_eq!(
+            from_rows(&rows),
+            Err("duplicate Galera status row: wsrep_ready".into())
         );
     }
 
