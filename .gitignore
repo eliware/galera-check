@@ -1,0 +1,12 @@
+/target/
+*.env
+.env.*
+*.local
+
+# Local build outputs
+/galera-check
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/
