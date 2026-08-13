@@ -9,7 +9,8 @@ fn main() {
         let url = galera_url.unwrap_or_else(|| {
             usage("GALERA_URL or GALERA_USER/GALERA_PASSWORD/GALERA_HOST is required for --agent")
         });
-        let listen = env::var("GALERA_AGENT_LISTEN").unwrap_or_else(|_| default_agent_listen(&url));
+        let listen = env::var("GALERA_AGENT_LISTEN")
+            .unwrap_or_else(|_| default_agent_listen(&url, arguments.len() == 2));
         let result = if arguments.len() == 2 {
             galera_check::run_performance_agent(&url, &listen)
         } else {
@@ -50,7 +51,7 @@ fn connection_url() -> Option<String> {
     }
 }
 
-fn default_agent_listen(url: &str) -> String {
+fn default_agent_listen(url: &str, performance: bool) -> String {
     let port = url
         .rsplit('@')
         .next()
@@ -58,7 +59,13 @@ fn default_agent_listen(url: &str) -> String {
         .and_then(|host| host.rsplit('.').next())
         .and_then(|octet| octet.parse::<u16>().ok())
         .filter(|octet| (81..=83).contains(octet))
-        .map(|octet| 33060 + octet - 80)
+        .map(|octet| {
+            if performance {
+                33160 + octet - 80
+            } else {
+                33060 + octet - 80
+            }
+        })
         .unwrap_or(33060);
     format!("127.0.0.1:{port}")
 }
