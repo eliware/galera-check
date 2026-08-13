@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build and release
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - run: cargo build --release --locked
+      - run: |
+          cp target/release/galera-check galera-check-linux-x86_64
+          sha256sum galera-check-linux-x86_64 > galera-check-linux-x86_64.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: galera-check-release
+          path: |
+            galera-check-linux-x86_64
+            galera-check-linux-x86_64.sha256
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: galera-check-release
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: galera-check ${{ env.RELEASE_TAG }}
+          generate_release_notes: true
+          files: |
+            galera-check-linux-x86_64
+            galera-check-linux-x86_64.sha256
