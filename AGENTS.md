@@ -23,6 +23,8 @@ standalone operational diagnostic.
 - No arguments must remain a successful no-op.
 - `--check` reads `GALERA_URL` and requires `wsrep_local_state_comment=Synced`
   and `wsrep_ready=ON`.
+- `--agent` reads `GALERA_URL`, listens on `GALERA_AGENT_LISTEN` (default
+  `127.0.0.1:33060`), and returns `up` or `down` for HAProxy agent checks.
 - Database checks use bounded connection, read, and write timeouts; URL-supplied
   timeout values are preserved.
 - Do not compile credentials into the binary or commit credentials to Git.
@@ -39,7 +41,7 @@ cargo check --all-targets --all-features
 cargo test --all-targets --all-features
 cargo clippy --all-targets --all-features -- -D warnings
 cargo llvm-cov --all-targets --all-features \
-  --ignore-filename-regex 'src/(main|mysql_adapter).rs' \
+  --ignore-filename-regex 'src/(agent|main|mysql_adapter).rs' \
   --fail-under-regions 100 --fail-under-functions 100 --fail-under-lines 100 \
   --summary-only
 ```

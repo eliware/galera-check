@@ -18,3 +18,7 @@ checking MariaDB Galera readiness.
   live database.
 - Establishes formatting, compilation, tests, Clippy, and strict coverage
   validation in GitHub Actions.
+## 0.2.0
+
+- Add `--agent` mode for HAProxy agent checks.
+- Support a loopback TCP listener returning `up` or `down` from Galera readiness.

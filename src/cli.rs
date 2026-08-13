@@ -1,10 +1,18 @@
 #[derive(Debug, PartialEq, Eq)]
 pub struct CommandModeError;
 
-pub(crate) fn command_mode(arguments: &[String]) -> Result<bool, CommandModeError> {
+#[derive(Debug, PartialEq, Eq)]
+pub enum CommandMode {
+    Noop,
+    Check,
+    Agent,
+}
+
+pub(crate) fn command_mode(arguments: &[String]) -> Result<CommandMode, CommandModeError> {
     match arguments {
-        [] => Ok(false),
-        [argument] if argument == "--check" => Ok(true),
+        [] => Ok(CommandMode::Noop),
+        [argument] if argument == "--check" => Ok(CommandMode::Check),
+        [argument] if argument == "--agent" => Ok(CommandMode::Agent),
         _ => Err(CommandModeError),
     }
 }
@@ -15,9 +23,10 @@ pub(crate) fn run(
     checker: fn(&str) -> Result<String, String>,
 ) -> Result<Option<String>, (u8, String)> {
     match command_mode(arguments) {
-        Ok(false) => Ok(None),
+        Ok(CommandMode::Noop) => Ok(None),
         Err(_) => Err((2, "usage: galera-check [--check]".into())),
-        Ok(true) => {
+        Ok(CommandMode::Agent) => Err((2, "use run_agent for --agent mode".into())),
+        Ok(CommandMode::Check) => {
             let url = galera_url.ok_or_else(|| (2, "GALERA_URL is required; usage: GALERA_URL=mysql://user:password@host:3306 galera-check --check".into()))?;
             checker(url)
                 .map(|host| Some(format!("{host}: Synced, wsrep_ready=ON")))
@@ -85,6 +94,14 @@ mod tests {
         assert_eq!(
             run(&["--check".into()], Some("url"), invalid_url),
             Err((2, "invalid GALERA_URL: invalid URL".into()))
+        );
+    }
+
+    #[test]
+    fn rejects_agent_mode_in_library_runner() {
+        assert_eq!(
+            run(&["--agent".into()], Some("url"), healthy),
+            Err((2, "use run_agent for --agent mode".into()))
         );
     }
 }

@@ -1,9 +1,15 @@
+mod agent;
 mod checker;
 mod cli;
 mod mysql_adapter;
 mod status;
 
-pub use cli::CommandModeError;
+pub use cli::{CommandMode, CommandModeError};
+
+/// Runs the HAProxy agent listener until the process is stopped.
+pub fn run_agent(galera_url: &str, listen: &str) -> Result<(), String> {
+    agent::serve(galera_url, listen, check_url)
+}
 
 /// Runs the checker logic without terminating the process.
 pub fn run(arguments: &[String], galera_url: Option<&str>) -> Result<Option<String>, (u8, String)> {
@@ -11,7 +17,7 @@ pub fn run(arguments: &[String], galera_url: Option<&str>) -> Result<Option<Stri
 }
 
 /// Returns whether the CLI should perform a check for its arguments.
-pub fn command_mode(arguments: &[String]) -> Result<bool, CommandModeError> {
+pub fn command_mode(arguments: &[String]) -> Result<CommandMode, CommandModeError> {
     cli::command_mode(arguments)
 }
 
@@ -22,12 +28,19 @@ pub fn check_url(url: &str) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{check_url, command_mode, run, CommandModeError};
+    use super::{check_url, command_mode, run, run_agent, CommandMode, CommandModeError};
 
     #[test]
     fn parses_cli_modes() {
-        assert_eq!(command_mode(&[]), Ok(false));
-        assert_eq!(command_mode(&["--check".to_string()]), Ok(true));
+        assert_eq!(command_mode(&[]), Ok(CommandMode::Noop));
+        assert_eq!(
+            command_mode(&["--check".to_string()]),
+            Ok(CommandMode::Check)
+        );
+        assert_eq!(
+            command_mode(&["--agent".to_string()]),
+            Ok(CommandMode::Agent)
+        );
         assert_eq!(
             command_mode(&["--invalid".to_string()]),
             Err(CommandModeError)
@@ -43,5 +56,12 @@ mod tests {
     #[test]
     fn runs_noop_without_arguments() {
         assert_eq!(run(&[], None), Ok(None));
+    }
+
+    #[test]
+    fn reports_agent_bind_failures() {
+        let error = run_agent("mysql://user:password@host", "bad address")
+            .expect_err("invalid listen address should fail");
+        assert!(error.starts_with("agent bind failed on bad address:"));
     }
 }
