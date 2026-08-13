@@ -64,14 +64,15 @@ cargo fmt --all -- --check
 cargo check --all-targets --all-features
 cargo test --all-targets --all-features
 cargo clippy --all-targets --all-features -- -D warnings
-cargo llvm-cov --all-targets --all-features --ignore-filename-regex 'src/(mysql_adapter|lib).rs' --summary-only
+cargo llvm-cov --all-targets --all-features --ignore-filename-regex 'src/(main|mysql_adapter).rs' --summary-only
 ```
 
 GitHub Actions runs formatting, checking, tests, Clippy, and coverage on
 pushes and pull requests.
 
-The coverage gate excludes the MySQL transport adapter and the library
-coverage artifact; the CLI and test suite are still exercised by the command.
+The coverage gate excludes only the process-exit wrapper and MySQL transport
+adapter; all testable CLI and library logic is included. The current gate is
+100% for regions, functions, and lines.
 To exercise the healthy live-check integration test locally, provide an
 explicit `GALERA_URL` with credentials through the environment. Never commit
 or log that URL.

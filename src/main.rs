@@ -2,28 +2,12 @@ use std::{env, process};
 
 fn main() {
     let arguments: Vec<String> = env::args().skip(1).collect();
-    match galera_check::command_mode(&arguments) {
-        Ok(false) => return,
-        Err(_) => {
-            eprintln!("usage: galera-check [--check]");
-            process::exit(2);
+    match galera_check::run(&arguments, env::var("GALERA_URL").ok().as_deref()) {
+        Ok(None) => {}
+        Ok(Some(message)) => println!("{message}"),
+        Err((code, message)) => {
+            eprintln!("{message}");
+            process::exit(code.into());
         }
-        Ok(true) => {}
     }
-
-    let url = env::var("GALERA_URL").unwrap_or_else(|_| usage("GALERA_URL is required"));
-    match galera_check::check_url(&url) {
-        Ok(host) => println!("{host}: Synced, wsrep_ready=ON"),
-        Err(message) => fail(message),
-    }
-}
-
-fn usage(message: &str) -> ! {
-    eprintln!("{message}; usage: GALERA_URL=mysql://user:password@host:3306 galera-check --check");
-    process::exit(2);
-}
-
-fn fail(message: String) -> ! {
-    eprintln!("{message}");
-    process::exit(1);
 }
