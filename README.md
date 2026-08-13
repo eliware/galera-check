@@ -70,6 +70,12 @@ cargo llvm-cov --all-targets --all-features --ignore-filename-regex 'src/(mysql_
 GitHub Actions runs formatting, checking, tests, Clippy, and coverage on
 pushes and pull requests.
 
+The coverage gate excludes the MySQL transport adapter and the library
+coverage artifact; the CLI and test suite are still exercised by the command.
+To exercise the healthy live-check integration test locally, provide an
+explicit `GALERA_URL` with credentials through the environment. Never commit
+or log that URL.
+
 ## Support
 
 For help or community discussion, visit eliware.org on Discord.
