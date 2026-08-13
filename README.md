@@ -13,7 +13,7 @@ cron, systemd, or Kubernetes operational tooling.
   `wsrep_ready=ON`.
 - `--agent` serves HAProxy agent checks, returning `up` or `down` for the
   configured Galera node.
-- Runtime URL and credentials; secrets are never compiled into the binary.
+- Runtime URL or individual connection variables; secrets are never compiled into the binary.
 - Rustls TLS support for encrypted database connections.
 - Useful exit codes for HAProxy and automation.
 - Small release binary with no runtime dependency on Rust.
@@ -44,6 +44,12 @@ Run a Galera readiness check by supplying the connection URL at runtime:
 
 ```sh
 GALERA_URL='mysql://user:password@10.0.0.81:3306' ./galera-check --check
+```
+
+Alternatively, provide individual connection variables:
+
+```sh
+GALERA_USER=user GALERA_PASSWORD=password GALERA_HOST=10.0.0.81 ./galera-check --check
 ```
 
 Run an HAProxy agent listener with the node URL supplied at runtime:
