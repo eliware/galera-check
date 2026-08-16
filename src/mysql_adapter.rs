@@ -25,7 +25,14 @@ pub fn weight(opts: Opts) -> Result<String, String> {
         "SHOW GLOBAL STATUS WHERE Variable_name IN ('wsrep_local_state_comment','wsrep_ready','wsrep_local_recv_queue','wsrep_local_send_queue','wsrep_flow_control_paused')",
     ).map_err(status_query_error)?;
     let latency_ms = started.elapsed().as_millis() as u64;
-    Ok(format!("{}%", crate::weight::calculate(&rows, latency_ms)))
+    format_weight(crate::weight::calculate(&rows, latency_ms))
+}
+
+fn format_weight(weight: u8) -> Result<String, String> {
+    if weight == 0 {
+        return Err("Galera node is not safe for read traffic".into());
+    }
+    Ok(format!("up {weight}%"))
 }
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(5);
@@ -52,7 +59,16 @@ mod tests {
 
     use mysql::{Opts, OptsBuilder};
 
-    use super::{with_default_timeouts, DEFAULT_TIMEOUT};
+    use super::{format_weight, with_default_timeouts, DEFAULT_TIMEOUT};
+
+    #[test]
+    fn performance_agent_response_has_explicit_up_state() {
+        assert_eq!(format_weight(98), Ok("up 98%".into()));
+        assert_eq!(
+            format_weight(0),
+            Err("Galera node is not safe for read traffic".into())
+        );
+    }
 
     #[test]
     fn adds_defaults_and_preserves_explicit_timeouts() {
