@@ -60,3 +60,7 @@ documentation with real credentials.
 - Do not deploy binaries to routers or change HAProxy/VyOS configuration from
   this repository unless the user explicitly requests it.
 - Do not commit build output under `target/` or local environment files.
+- Do not over-engineer simple tasks.
+- Do not guess when confused.
+- Do not make random, pointless changes.
+- Check your own work before saying you're done.
