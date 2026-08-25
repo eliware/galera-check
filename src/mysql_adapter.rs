@@ -10,7 +10,7 @@ pub fn check(opts: Opts) -> Result<(), String> {
     let mut connection = pool.get_conn().map_err(connection_error)?;
     let rows: Vec<(String, String)> = connection
         .query(
-            "SHOW GLOBAL STATUS WHERE Variable_name IN ('wsrep_local_state_comment','wsrep_ready')",
+            "SHOW GLOBAL STATUS WHERE Variable_name IN ('wsrep_local_state_comment','wsrep_ready','wsrep_cluster_status')",
         )
         .map_err(status_query_error)?;
     validate_status(&rows)
@@ -22,7 +22,7 @@ pub fn weight(opts: Opts) -> Result<String, String> {
         .map_err(|error| format!("connection setup failed: {error}"))?;
     let mut connection = pool.get_conn().map_err(connection_error)?;
     let rows: Vec<(String, String)> = connection.query(
-        "SHOW GLOBAL STATUS WHERE Variable_name IN ('wsrep_local_state_comment','wsrep_ready','wsrep_local_recv_queue','wsrep_local_send_queue','wsrep_flow_control_paused')",
+        "SHOW GLOBAL STATUS WHERE Variable_name IN ('wsrep_local_state_comment','wsrep_ready','wsrep_cluster_status','wsrep_local_recv_queue','wsrep_local_send_queue','wsrep_flow_control_paused')",
     ).map_err(status_query_error)?;
     let latency_ms = started.elapsed().as_millis() as u64;
     format_weight(crate::weight::calculate(&rows, latency_ms))

@@ -2,6 +2,7 @@
 pub(crate) struct GaleraStatus {
     pub(crate) state: String,
     pub(crate) ready: String,
+    pub(crate) cluster_status: String,
 }
 
 pub(crate) fn from_rows(rows: &[(String, String)]) -> Result<GaleraStatus, String> {
@@ -20,14 +21,15 @@ pub(crate) fn from_rows(rows: &[(String, String)]) -> Result<GaleraStatus, Strin
     Ok(GaleraStatus {
         state: value("wsrep_local_state_comment")?,
         ready: value("wsrep_ready")?,
+        cluster_status: value("wsrep_cluster_status")?,
     })
 }
 
 pub(crate) fn validate(status: &GaleraStatus) -> Result<(), String> {
-    if status.state != "Synced" || status.ready != "ON" {
+    if status.state != "Synced" || status.ready != "ON" || status.cluster_status != "Primary" {
         return Err(format!(
-            "unhealthy Galera state: state={} ready={}",
-            status.state, status.ready
+            "unhealthy Galera state: state={} ready={} cluster_status={}",
+            status.state, status.ready, status.cluster_status
         ));
     }
     Ok(())
@@ -42,12 +44,14 @@ mod tests {
         let rows = vec![
             ("wsrep_ready".into(), "ON".into()),
             ("wsrep_local_state_comment".into(), "Synced".into()),
+            ("wsrep_cluster_status".into(), "Primary".into()),
         ];
         assert_eq!(
             from_rows(&rows),
             Ok(GaleraStatus {
                 state: "Synced".into(),
-                ready: "ON".into()
+                ready: "ON".into(),
+                cluster_status: "Primary".into()
             })
         );
     }
@@ -58,14 +62,16 @@ mod tests {
             from_rows(&[]),
             Ok(GaleraStatus {
                 state: "".into(),
-                ready: "".into()
+                ready: "".into(),
+                cluster_status: "".into()
             })
         );
         assert_eq!(
             from_rows(&[("wsrep_local_state_comment".into(), "Synced".into())]),
             Ok(GaleraStatus {
                 state: "Synced".into(),
-                ready: "".into()
+                ready: "".into(),
+                cluster_status: "".into()
             })
         );
     }
@@ -87,18 +93,42 @@ mod tests {
     fn accepts_only_synced_ready_status() {
         assert!(validate(&GaleraStatus {
             state: "Synced".into(),
-            ready: "ON".into()
+            ready: "ON".into(),
+            cluster_status: "Primary".into()
         })
         .is_ok());
         assert!(validate(&GaleraStatus {
             state: "Joining".into(),
-            ready: "ON".into()
+            ready: "ON".into(),
+            cluster_status: "Primary".into()
         })
         .is_err());
         assert!(validate(&GaleraStatus {
             state: "Synced".into(),
-            ready: "OFF".into()
+            ready: "OFF".into(),
+            cluster_status: "Primary".into()
         })
         .is_err());
+    }
+
+    #[test]
+    fn rejects_non_primary_and_malformed_cluster_status() {
+        for value in ["Non-Primary", "", "primary", "Primary extra"] {
+            assert!(validate(&GaleraStatus {
+                state: "Synced".into(),
+                ready: "ON".into(),
+                cluster_status: value.into()
+            })
+            .is_err());
+        }
+    }
+
+    #[test]
+    fn rejects_duplicate_cluster_status() {
+        let rows = vec![
+            ("wsrep_cluster_status".into(), "Primary".into()),
+            ("wsrep_cluster_status".into(), "Non-Primary".into()),
+        ];
+        assert!(from_rows(&rows).is_err());
     }
 }

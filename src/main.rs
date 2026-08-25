@@ -2,6 +2,14 @@ use std::{env, process};
 
 fn main() {
     let arguments: Vec<String> = env::args().skip(1).collect();
+    if arguments == ["--help"] || arguments == ["-h"] {
+        println!("usage: galera-check [--check | --agent [--performance]]");
+        return;
+    }
+    if arguments == ["--version"] || arguments == ["-V"] {
+        println!("galera-check {}", env!("CARGO_PKG_VERSION"));
+        return;
+    }
     let galera_url = connection_url();
     if (arguments.len() == 1 && arguments[0] == "--agent")
         || (arguments.len() == 2 && arguments[0] == "--agent" && arguments[1] == "--performance")
@@ -26,9 +34,33 @@ fn main() {
         Ok(None) => {}
         Ok(Some(message)) => println!("{message}"),
         Err((code, message)) => {
+            emit_diagnostic(&message);
             eprintln!("{message}");
             process::exit(code.into());
         }
+    }
+}
+
+fn emit_diagnostic(message: &str) {
+    let mode = env::var("GALERA_DIAGNOSTICS").ok();
+    if !matches!(mode.as_deref(), Some("1") | Some("json")) {
+        return;
+    }
+    let reason = if message.contains("GALERA_URL") || message.contains("configuration") {
+        "config"
+    } else if message.contains("query") {
+        "query"
+    } else if message.contains("unhealthy") {
+        "state"
+    } else if message.contains("access denied") || message.contains("1045") {
+        "auth"
+    } else {
+        "connect"
+    };
+    if mode.as_deref() == Some("json") {
+        eprintln!(r#"{{"reason":"{reason}"}}"#);
+    } else {
+        eprintln!("galera-check [{reason}]");
     }
 }
 
@@ -46,9 +78,34 @@ fn connection_url() -> Option<String> {
             let password = env::var("GALERA_PASSWORD").ok()?;
             let host = env::var("GALERA_HOST").ok()?;
             let port = env::var("GALERA_PORT").unwrap_or_else(|_| "3306".into());
-            Some(format!("mysql://{user}:{password}@{host}:{port}"))
+            if port.parse::<u16>().is_err() {
+                usage("GALERA_PORT must be a valid port");
+            }
+            let host = if host.contains(':') && !host.starts_with('[') {
+                format!("[{host}]")
+            } else {
+                host
+            };
+            Some(format!(
+                "mysql://{}:{}@{}:{port}",
+                encode_component(&user),
+                encode_component(&password),
+                host
+            ))
         }
     }
+}
+
+fn encode_component(value: &str) -> String {
+    value
+        .bytes()
+        .flat_map(|byte| match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
+                vec![byte as char]
+            }
+            byte => format!("%{byte:02X}").chars().collect(),
+        })
+        .collect()
 }
 
 fn default_agent_listen(url: &str, performance: bool) -> String {

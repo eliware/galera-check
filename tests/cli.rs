@@ -24,6 +24,26 @@ fn invalid_arguments_exit_two() {
 }
 
 #[test]
+fn help_is_stable_and_succeeds() {
+    let output = binary().arg("--help").output().expect("run checker");
+    assert!(output.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        "usage: galera-check [--check | --agent [--performance]]\n"
+    );
+}
+
+#[test]
+fn version_is_stable_and_succeeds() {
+    let output = binary().arg("--version").output().expect("run checker");
+    assert!(output.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        "galera-check 0.2.5\n"
+    );
+}
+
+#[test]
 fn missing_url_exits_two() {
     let output = binary()
         .arg("--check")
@@ -39,6 +59,20 @@ fn invalid_url_exits_two() {
     let output = binary()
         .arg("--check")
         .env("GALERA_URL", "not-a-mysql-url")
+        .output()
+        .expect("run checker");
+    assert_eq!(output.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("invalid GALERA_URL:"));
+}
+
+#[test]
+fn explicit_url_takes_precedence_over_separate_variables() {
+    let output = binary()
+        .arg("--check")
+        .env("GALERA_URL", "not-a-mysql-url")
+        .env("GALERA_USER", "fallback-user")
+        .env("GALERA_PASSWORD", "fallback-password")
+        .env("GALERA_HOST", "127.0.0.1")
         .output()
         .expect("run checker");
     assert_eq!(output.status.code(), Some(2));

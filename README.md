@@ -9,14 +9,14 @@ cron, systemd, or Kubernetes operational tooling.
 ## Features
 
 - Successful no-op when invoked without arguments.
-- `--check` verifies `wsrep_local_state_comment=Synced` and
-  `wsrep_ready=ON`.
+- `--check` verifies `wsrep_local_state_comment=Synced`, `wsrep_ready=ON`, and
+  `wsrep_cluster_status=Primary`.
 - `--agent` serves standard HAProxy agent checks, returning `up` or `down` for
   the configured Galera node.
 - `--agent --performance` serves weighted HAProxy agent checks using database
   and Galera performance metrics.
-- Runtime URL or individual connection variables; secrets are never compiled into the binary.
-- Rustls TLS support for encrypted database connections.
+- Runtime URL or individually encoded connection variables; secrets are never compiled into the binary.
+- Optional Rustls TLS support through URL options; production TLS policy is outside this package.
 - Useful exit codes for HAProxy and automation.
 - Small release binary with no runtime dependency on Rust.
 
@@ -35,6 +35,13 @@ Status parsing and readiness validation are tested independently from the
 database transport. Process-level behavior is covered in `tests/cli.rs`.
 
 ## Usage
+
+Display the supported commands or installed version:
+
+```sh
+./galera-check --help
+./galera-check --version
+```
 
 The checker intentionally does nothing without arguments:
 
@@ -61,7 +68,8 @@ GALERA_URL='mysql://user:password@10.0.0.81:3306' \
 GALERA_AGENT_LISTEN='127.0.0.1:33060' ./galera-check --agent
 ```
 
-The agent returns `up` when the node is `Synced` and `wsrep_ready=ON`, and
+The agent returns `up` only when the node is `Synced`, `wsrep_ready=ON`, and
+`wsrep_cluster_status=Primary`, and
 `down` for connection failures or unhealthy state. The listen address defaults
 to `127.0.0.1:33060`.
 
@@ -76,9 +84,27 @@ Standard `--agent` mode remains health-only for ordered write/sequential-read
 backends. Performance mode returns a dynamic weight percentage based on
 Galera queues, flow control, and probe latency.
 
-TLS can be requested with MySQL URL options such as
-`?ssl-mode=REQUIRED`; the bundled Rustls backend validates the server
-certificate using the platform root store.
+TLS is an optional library capability. It is not mandatory or certified for
+the trusted-LAN production deployment; test any selected MySQL URL SSL mode
+against the target MariaDB version before using it.
+
+When both `GALERA_URL` and separate variables are present, `GALERA_URL` wins.
+Separate variables are encoded safely, default the port to `3306`, and do not
+provide URL-only TLS or timeout options.
+
+There is currently no certified MariaDB/Galera compatibility matrix. The
+intended future matrix is MariaDB 10.6 + Galera 4, MariaDB 10.11 + Galera 4,
+MariaDB 11.4 + Galera 4, and the production MariaDB/Galera version.
+
+Performance mode returns `down` when state, queue, flow-control, or latency
+pressure produces an unsafe zero weight; it never advertises `up 0%`.
+
+Set `GALERA_DIAGNOSTICS=1` for stderr reason categories (`config`, `connect`,
+`auth`, `query`, `state`, or `performance`), or `GALERA_DIAGNOSTICS=json` for
+the reason-code JSON form. Diagnostics never enter the HAProxy response and do
+not include credentials. The opt-in integration harness is enabled with
+`GALERA_CHECK_INTEGRATION=1` and operator-supplied `GALERA_INTEGRATION_*_URL`
+variables; unset endpoints are skipped.
 
 Keep credentials in the service environment or a protected secret file. Never
 commit real credentials to the repository.
@@ -109,6 +135,30 @@ cargo build --release
 install -m 0755 target/release/galera-check /usr/local/bin/galera-check
 ```
 
+For a reproducible Debian 12 build with the required Rust and native build
+dependencies:
+
+```sh
+docker build --tag galera-check-build:debian12 .
+docker create --name galera-check-build galera-check-build:debian12
+docker cp galera-check-build:/src/target/release/galera-check ./galera-check-linux-x86_64
+docker rm galera-check-build
+```
+
+Before deployment, verify the checksum of the binary after copying it and
+preserve executable mode (`0755`). Keep the previous binary available for
+rollback, and do not deploy a file whose checksum does not match the release
+artifact.
+
+## Release and rollback
+
+Releases are created from an explicitly authorized `v*` tag. The release
+workflow builds Linux and Windows artifacts from that exact tag, publishes
+SHA-256 files beside them, and publishes only after both platform builds pass.
+For a deployment, verify the downloaded checksum before copying the binary,
+record the source tag and checksum, and retain the prior binary so the service
+can be restored without rebuilding.
+
 ## Development
 
 ```sh
@@ -117,16 +167,19 @@ cargo check --all-targets --all-features
 cargo test --all-targets --all-features
 cargo clippy --all-targets --all-features -- -D warnings
 cargo llvm-cov --all-targets --all-features \
-  --ignore-filename-regex 'src/(main|mysql_adapter).rs' \
+  --ignore-filename-regex 'src[/\\\\](agent|main|mysql_adapter)\\.rs' \
   --summary-only
+cargo install cargo-audit --locked  # once, if cargo-audit is not installed
+cargo audit
 ```
 
 GitHub Actions runs formatting, checking, tests, Clippy, and coverage on
 pushes and pull requests.
 
-The coverage gate excludes only the process wrapper (`src/main.rs`) and live
-MySQL adapter (`src/mysql_adapter.rs`). The remaining CLI and library logic is
-required to remain at 100% for regions, functions, and lines (100% x 3). Run
+The coverage gate excludes the process wrapper (`src/main.rs`), agent listener
+(`src/agent.rs`), and live MySQL adapter (`src/mysql_adapter.rs`). The
+remaining CLI and library logic is required to remain at 100% for regions,
+functions, and lines (100% x 3). Run
 the command above to reproduce the CI coverage gate. Transport-independent
 behavior is tested with local fakes. The live-check integration test is opt-in:
 set `GALERA_CHECK_LIVE=1` and provide an explicit `GALERA_URL`. Never commit or

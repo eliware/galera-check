@@ -77,16 +77,18 @@ mod tests {
         let healthy = vec![
             ("wsrep_local_state_comment".into(), "Synced".into()),
             ("wsrep_ready".into(), "ON".into()),
+            ("wsrep_cluster_status".into(), "Primary".into()),
         ];
         assert!(validate_status(&healthy).is_ok());
 
         let unhealthy = vec![
             ("wsrep_local_state_comment".into(), "Joining".into()),
             ("wsrep_ready".into(), "ON".into()),
+            ("wsrep_cluster_status".into(), "Primary".into()),
         ];
         assert_eq!(
             validate_status(&unhealthy),
-            Err("unhealthy Galera state: state=Joining ready=ON".into())
+            Err("unhealthy Galera state: state=Joining ready=ON cluster_status=Primary".into())
         );
     }
 
@@ -96,6 +98,7 @@ mod tests {
             ("wsrep_local_state_comment".into(), "Synced".into()),
             ("wsrep_local_state_comment".into(), "Joining".into()),
             ("wsrep_ready".into(), "ON".into()),
+            ("wsrep_cluster_status".into(), "Primary".into()),
         ];
         assert_eq!(
             validate_status(&rows),

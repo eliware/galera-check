@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 0.2.5
+
+- Require the Galera component to be `Primary` in health and performance checks.
+- Add bounded agent concurrency, request deadline handling, diagnostics, safe
+  separate-variable encoding, integration scaffolding, and Debian 12 build
+  documentation.
+
+- Added stable `--help` and `--version` output.
+- Added a Debian 12 Docker build definition and binary Git attributes.
 - Refactored CLI behavior into testable library logic with injectable check
   seams, covering healthy and failure paths without requiring a live database.
 - Restored the release coverage gate to 100% for regions, functions, and lines,

@@ -9,6 +9,7 @@ pub(crate) fn calculate(rows: &[(String, String)], latency_ms: u64) -> u8 {
         .collect();
     if values.get("wsrep_local_state_comment") != Some(&"Synced")
         || values.get("wsrep_ready") != Some(&"ON")
+        || values.get("wsrep_cluster_status") != Some(&"Primary")
     {
         return 0;
     }
@@ -46,6 +47,7 @@ mod tests {
         vec![
             ("wsrep_local_state_comment".into(), "Synced".into()),
             ("wsrep_ready".into(), "ON".into()),
+            ("wsrep_cluster_status".into(), "Primary".into()),
             ("wsrep_local_recv_queue".into(), queue.into()),
             ("wsrep_local_send_queue".into(), "0".into()),
             ("wsrep_flow_control_paused".into(), paused.into()),

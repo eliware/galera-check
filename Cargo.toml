@@ -1,6 +1,6 @@
 [package]
 name = "galera-check"
-version = "0.2.4"
+version = "0.2.5"
 edition = "2021"
 description = "Minimal Galera readiness checker for MariaDB nodes"
 license = "MIT"

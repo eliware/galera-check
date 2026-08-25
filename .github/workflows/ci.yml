@@ -12,7 +12,11 @@ env:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -27,4 +31,6 @@ jobs:
       - run: cargo test --all-targets --all-features
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - uses: taiki-e/install-action@cargo-llvm-cov
-      - run: cargo llvm-cov --all-targets --all-features --ignore-filename-regex 'src/(agent|main|mysql_adapter).rs' --fail-under-regions 100 --fail-under-functions 100 --fail-under-lines 100 --summary-only
+      - run: cargo llvm-cov --all-targets --all-features --ignore-filename-regex 'src[\\/](agent|main|mysql_adapter)\.rs' --fail-under-regions 100 --fail-under-functions 100 --fail-under-lines 100 --summary-only
+      - uses: taiki-e/install-action@cargo-audit
+      - run: cargo audit
